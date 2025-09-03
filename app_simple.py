@@ -336,8 +336,7 @@ def main():
     with st.expander("ℹ️ Configurações da API"):
         st.write(f"**Base URL:** {base_url}")
         st.write(f"**Token:** {token[:10]}...")
-        if start_date and end_date:
-            st.write(f"**Período:** {start_date} a {end_date}")
+        st.write(f"**Período:** {start_date} a {end_date}")
         st.write("**Pipeline ID:** 689b59706e704a0024fc2374 (Funil - HOUSE)")
 
 if __name__ == "__main__":
