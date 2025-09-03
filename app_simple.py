@@ -55,22 +55,23 @@ def clean_dataframe(df):
             if df[col].dtype == 'object':
                 df[col] = df[col].astype(str)
         
-        # Remover colunas com dados muito complexos
+        # Selecionar apenas colunas importantes para exibição
+        important_columns = ['name', 'stage', 'amount_total', 'amount_monthly', 'amount_unique', 'markup']
         safe_columns = []
-        for col in df.columns:
-            try:
-                # Testar se a coluna pode ser exibida
-                test_df = df[[col]].head(1)
-                st.dataframe(test_df, use_container_width=True)
-                safe_columns.append(col)
-            except:
-                continue
         
-        # Retornar apenas colunas seguras
+        for col in important_columns:
+            if col in df.columns:
+                safe_columns.append(col)
+        
+        # Se não encontrar colunas importantes, usar as primeiras 5
+        if not safe_columns and len(df.columns) > 0:
+            safe_columns = df.columns[:5].tolist()
+        
+        # Retornar DataFrame com colunas seguras
         if safe_columns:
             return df[safe_columns]
         else:
-            # Se nenhuma coluna for segura, criar uma versão básica
+            # Fallback: DataFrame básico
             return pd.DataFrame({
                 'ID': range(len(df)),
                 'Status': 'Dados carregados',
@@ -138,7 +139,11 @@ def main():
                         
                         # Exibir DataFrame limpo
                         st.subheader("📋 Dados dos Deals")
-                        st.dataframe(safe_df, use_container_width=True)
+                        st.dataframe(safe_df.head(20), use_container_width=True)
+                        
+                        # Mostrar total de registros
+                        if len(safe_df) > 20:
+                            st.info(f"📊 Mostrando os primeiros 20 de {len(safe_df)} deals. Use os filtros para ver mais.")
                         
                         # Estatísticas básicas
                         st.subheader("📈 Estatísticas")
@@ -155,10 +160,15 @@ def main():
                                 st.metric("Colunas", len(df.columns))
                         
                         with col3:
-                            if 'value' in df.columns:
+                            if 'amount_total' in df.columns:
                                 try:
-                                    total_value = df['value'].sum()
-                                    st.metric("Valor Total", f"R$ {total_value:,.2f}")
+                                    # Converter para numérico e somar
+                                    amounts = pd.to_numeric(df['amount_total'], errors='coerce')
+                                    total_value = amounts.sum()
+                                    if not pd.isna(total_value):
+                                        st.metric("Valor Total", f"R$ {total_value:,.2f}")
+                                    else:
+                                        st.metric("Valor Total", "N/A")
                                 except:
                                     st.metric("Colunas", len(df.columns))
                             else:
