@@ -172,39 +172,21 @@ def main():
     st.title("🏠 Dashboard Funil - HOUSE")
     st.markdown("---")
     
-    # Filtros de data
-    col1, col2, col3 = st.columns(3)
-    
-    with col1:
-        start_date = st.date_input(
-            "Data Inicial",
-            value=date.today() - timedelta(days=30),
-            format="DD/MM/YYYY"
-        )
-    
-    with col2:
-        end_date = st.date_input(
-            "Data Final", 
-            value=date.today(),
-            format="DD/MM/YYYY"
-        )
-    
-    with col3:
-        if st.button("🔄 Atualizar Dados", type="primary"):
-            st.rerun()
+    # Período padrão (últimos 30 dias)
+    start_date = date.today() - timedelta(days=30)
+    end_date = date.today()
     
     # Buscar dados do Funil HOUSE
-    if start_date and end_date:
-        house_data = fetch_house_funnel_data(
-            base_url, 
-            token, 
-            start_date.strftime("%Y-%m-%d"),
-            end_date.strftime("%Y-%m-%d")
-        )
-        
-        house_stages = fetch_house_funnel_stages(base_url, token)
-        
-        if house_data and house_stages:
+    house_data = fetch_house_funnel_data(
+        base_url, 
+        token, 
+        start_date.strftime("%Y-%m-%d"),
+        end_date.strftime("%Y-%m-%d")
+    )
+    
+    house_stages = fetch_house_funnel_stages(base_url, token)
+    
+    if house_data and house_stages:
             st.success(f"✅ Dados do Funil HOUSE carregados com sucesso!")
             
             # Criar abas para organizar o conteúdo
