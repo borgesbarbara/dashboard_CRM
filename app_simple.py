@@ -80,8 +80,17 @@ def process_comparative_funnel_data(deals_data):
         
         deals = deals_data["deals"]
         
-        # Definir usuários de interesse
-        target_users = ["Maria Eduarda ", "Paola Chagas", "Jonathan Vitorino", "David Cauã Ferreira de Sene", "Richard", "Renata Cavalheiro"]
+        # Buscar TODOS os usuários que existem na API (mesma lógica do app_refactored.py)
+        all_users = set()
+        for deal in deals:
+            if "user" in deal and deal["user"]:
+                user_info = deal["user"]
+                if isinstance(user_info, dict) and "name" in user_info:
+                    user_name = user_info["name"].strip()
+                    if user_name:  # Só adicionar se não for vazio
+                        all_users.add(user_name)
+        
+        target_users = sorted(list(all_users))
         
         # Estrutura para armazenar dados por usuário e etapa
         user_stage_data = {}
@@ -95,9 +104,9 @@ def process_comparative_funnel_data(deals_data):
             if "user" in deal and deal["user"]:
                 user_info = deal["user"]
                 if isinstance(user_info, dict) and "name" in user_info:
-                    user_name = user_info["name"]
+                    user_name = user_info["name"].strip()
                     
-                    # Verificar se é um dos usuários de interesse
+                    # Verificar se é um dos usuários encontrados
                     if user_name in target_users:
                         # Obter etapa do deal
                         deal_stage = deal.get("deal_stage", {})
@@ -113,12 +122,14 @@ def process_comparative_funnel_data(deals_data):
         # Converter para DataFrame
         funnel_data = []
         for user in target_users:
-            for stage, count in user_stage_data[user].items():
-                funnel_data.append({
-                    "Usuário": user,
-                    "Etapa": stage,
-                    "Quantidade": count
-                })
+            total_user_deals = sum(user_stage_data[user].values())
+            if total_user_deals > 0:  # Só incluir usuários com dados
+                for stage, count in user_stage_data[user].items():
+                    funnel_data.append({
+                        "Usuário": user,
+                        "Etapa": stage,
+                        "Quantidade": count
+                    })
         
         return pd.DataFrame(funnel_data)
         
@@ -245,15 +256,12 @@ def main():
                 if comparative_df is not None and not comparative_df.empty:
                     st.subheader("📊 Comparativo de Negócios por Usuário")
                     
-                    # Definir cores para cada usuário
-                    colors = {
-                        "Maria Eduarda ": "lightcoral",
-                        "Paola Chagas": "lightblue",
-                        "Jonathan Vitorino": "lightgreen",
-                        "David Cauã Ferreira de Sene": "orange",
-                        "Richard": "purple",
-                        "Renata Cavalheiro": "pink"
-                    }
+                    # Definir cores dinâmicas para cada usuário
+                    color_palette = ["lightcoral", "lightblue", "lightgreen", "orange", "purple", "pink", "lightyellow", "lightcyan", "lightgray", "lightsteelblue"]
+                    colors = {}
+                    
+                    for i, user in enumerate(comparative_df["Usuário"].unique()):
+                        colors[user] = color_palette[i % len(color_palette)]
                     
                     # Gráfico de barras lado a lado
                     fig = go.Figure()
