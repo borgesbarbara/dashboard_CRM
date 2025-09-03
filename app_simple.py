@@ -81,7 +81,7 @@ def process_comparative_funnel_data(deals_data):
         deals = deals_data["deals"]
         
         # Definir usuários de interesse
-        target_users = ["Maria Eduarda ", "Paola Chagas", "Jonathan Vitorino", "David Cauã Ferreira de Sene"]
+        target_users = ["Maria Eduarda ", "Paola Chagas", "Jonathan Vitorino", "David Cauã Ferreira de Sene", "Richard", "Renata Cavalheiro"]
         
         # Estrutura para armazenar dados por usuário e etapa
         user_stage_data = {}
@@ -250,7 +250,9 @@ def main():
                         "Maria Eduarda ": "lightcoral",
                         "Paola Chagas": "lightblue",
                         "Jonathan Vitorino": "lightgreen",
-                        "David Cauã Ferreira de Sene": "orange"
+                        "David Cauã Ferreira de Sene": "orange",
+                        "Richard": "purple",
+                        "Renata Cavalheiro": "pink"
                     }
                     
                     # Gráfico de barras lado a lado
@@ -379,7 +381,7 @@ def main():
                         st.dataframe(deals_df, use_container_width=True)
                         
                         if len(deals) > 20:
-                            st.info(f"📊 Mostrando os primeiros 20 de {len(deals)} deals")
+                            st.info(f"�� Mostrando os primeiros 20 de {len(deals)} deals")
         
         else:
             st.error("❌ Erro ao carregar dados do Funil HOUSE")
