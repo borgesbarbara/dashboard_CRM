@@ -1,25 +1,77 @@
+# Dashboard CRM - HOUSE
 
-# Relatórios – RD Conversas (Streamlit)
+Dashboard para análise de funil de vendas integrado com RD Station CRM.
 
-App em Streamlit para consultar endpoints de **reports** da API Tallos/RD Station Conversas.
+## 🚀 Deploy no Streamlit Cloud
 
-## Uso
-1. Instale dependências:
+### Pré-requisitos
+- Conta no GitHub
+- Conta no Streamlit Community Cloud
+
+### Passos para Deploy
+
+1. **Clone o repositório:**
    ```bash
-   pip install -r requirements.txt
+   git clone https://github.com/SEU_USUARIO/SEU_REPO.git
+   cd SEU_REPO
    ```
 
-2. Configure `.env`:
-   ```env
-   API_BASE_URL=https://api.tallos.com.br
-   API_TOKEN=SEU_TOKEN_AQUI
-   API_ENDPOINT=/megasac-api/v2/reports/messages  # ajuste para o endpoint real
-   API_PARAMS={"team_id":123}                      # (opcional) parâmetros extras
+2. **Configure as variáveis de ambiente no Streamlit Cloud:**
+   - Acesse [share.streamlit.io](https://share.streamlit.io)
+   - Vá em "Secrets" da sua aplicação
+   - Adicione:
+   ```toml
+   [secrets]
+   API_BASE_URL = "https://crm.rdstation.com"
+   API_TOKEN = "SUA_CHAVE_API_AQUI"
    ```
 
-3. Rode:
-   ```bash
-   streamlit run app.py
-   ```
+3. **Deploy:**
+   - Repository: Seu repositório
+   - Branch: `main`
+   - Main file path: `app_refactored.py`
+   - Clique em "Deploy!"
 
-4. Na sidebar, ajuste Base URL, Token, Endpoint e Período. Parâmetros extras podem ser enviados como **JSON**.
+### 📁 Estrutura do Projeto
+
+```
+├── app_refactored.py          # Arquivo principal (entrypoint)
+├── app.py                     # Versão completa do dashboard
+├── frontend/                  # Componentes da interface
+│   ├── components/           # Gráficos e filtros
+│   ├── pages/               # Páginas do dashboard
+│   └── utils/               # Utilitários da UI
+├── backend/                  # Lógica de negócio
+│   ├── api/                 # Cliente da API RD Station
+│   ├── models/              # Modelos de dados
+│   └── utils/               # Utilitários
+├── requirements.txt          # Dependências Python
+├── runtime.txt              # Versão do Python
+└── .gitignore               # Arquivos ignorados pelo Git
+```
+
+### 🔧 Tecnologias
+
+- **Frontend:** Streamlit
+- **Backend:** Python
+- **APIs:** RD Station CRM
+- **Gráficos:** Plotly
+- **Dados:** Pandas
+
+### 📊 Funcionalidades
+
+- Dashboard de funil de vendas
+- Análise de etapas do CRM
+- Gráficos interativos
+- Filtros por período
+- Auto-refresh a cada 5 minutos
+
+### 🚨 Importante
+
+- **NUNCA** faça commit do arquivo `.env`
+- Use sempre o painel "Secrets" do Streamlit para variáveis sensíveis
+- O arquivo principal para deploy é `app_refactored.py`
+
+### 📞 Suporte
+
+Para dúvidas sobre o deploy, consulte a [documentação do Streamlit](https://docs.streamlit.io/streamlit-community-cloud).

@@ -16,13 +16,33 @@ st.set_page_config(
     page_title="Dashboard Funil - HOUSE",
     page_icon="🏠",
     layout="wide",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="expanded",
+    menu_items={
+        'Get Help': None,
+        'Report a bug': None,
+        'About': None
+    }
 )
 
 # Adicionar meta tag para auto-refresh
 st.markdown(
     """
     <meta http-equiv="refresh" content="300">
+    """,
+    unsafe_allow_html=True
+)
+
+# Desabilitar menu e botão de deploy
+st.markdown(
+    """
+    <style>
+        #MainMenu {visibility: hidden;}
+        footer {visibility: hidden;}
+        header {visibility: hidden;}
+        .stDeployButton {display: none;}
+        .stApp > header {display: none;}
+        .stApp > footer {display: none;}
+    </style>
     """,
     unsafe_allow_html=True
 )
@@ -220,7 +240,7 @@ def fetch_team_pipelines(base_url: str, token: str):
     except Exception as e:
         return None
 
-@st.cache_data(ttl=300)
+@st.cache_data(ttl=30)
 def fetch_house_funnel_data(base_url: str, token: str, start_date: str, end_date: str):
     """Busca dados específicos do Funil - HOUSE"""
     try:
@@ -303,88 +323,9 @@ def fetch_house_funnel_stages(base_url: str, token: str):
         print(f"DEBUG: Exception: {str(e)}")
         return None
 
-@st.cache_data(ttl=300)
-def fetch_house_stage_details(base_url: str, token: str, start_date: str, end_date: str):
-    """Busca informações detalhadas de cada etapa do Funil - HOUSE"""
-    try:
-        # Primeiro, buscar as etapas do HOUSE
-        stages_data = fetch_house_funnel_stages(base_url, token)
-        if not stages_data:
-            return None
-            
-        # Buscar deals do HOUSE
-        deals_data = fetch_house_funnel_data(base_url, token, start_date, end_date)
-        if not deals_data or "deals" not in deals_data:
-            return None
-            
-        deals = deals_data["deals"]
-        print(f"DEBUG: Total de deals do HOUSE: {len(deals)}")
-        
-        # Criar dicionário para armazenar dados de cada etapa
-        stage_details = {}
-        
-        # Inicializar contadores para cada etapa
-        for stage in stages_data:
-            stage_id = stage["id"]
-            stage_name = stage["name"]
-            stage_order = stage["order"]
-            
-            stage_details[stage_id] = {
-                "name": stage_name,
-                "nickname": stage.get("nickname", ""),
-                "order": stage_order,
-                "id": stage_id,
-                "deals_count": 0,
-                "total_value": 0.0,
-                "avg_value": 0.0,
-                "deals": []
-            }
-        
-        # Processar cada deal e distribuir pelas etapas
-        for deal in deals:
-            deal_stage_id = deal.get("deal_stage", {}).get("id")
-            deal_value = deal.get("value", 0) or 0
-            deal_user = deal.get("user", {}).get("name", "Sem usuário")
-            
-            print(f"DEBUG: Processando deal - Stage ID: {deal_stage_id}, User: {deal_user}, Value: {deal_value}")
-            
-            if deal_stage_id and deal_stage_id in stage_details:
-                stage_details[deal_stage_id]["deals_count"] += 1
-                stage_details[deal_stage_id]["total_value"] += deal_value
-                stage_details[deal_stage_id]["deals"].append({
-                    "id": deal.get("id"),
-                    "name": deal.get("name", "Sem nome"),
-                    "value": deal_value,
-                    "user": deal_user,
-                    "created_at": deal.get("created_at")
-                })
-            else:
-                print(f"DEBUG: Deal ignorado - Stage ID não encontrado: {deal_stage_id}")
-        
-        # Debug: Mostrar distribuição de usuários
-        user_distribution = {}
-        for stage_id, stage_data in stage_details.items():
-            for deal in stage_data["deals"]:
-                user = deal["user"]
-                if user not in user_distribution:
-                    user_distribution[user] = 0
-                user_distribution[user] += 1
-        
-        print(f"DEBUG: Distribuição de usuários: {user_distribution}")
-        
-        # Calcular valores médios
-        for stage_id, stage_data in stage_details.items():
-            if stage_data["deals_count"] > 0:
-                stage_data["avg_value"] = stage_data["total_value"] / stage_data["deals_count"]
-        
-        print(f"DEBUG: Dados processados para {len(stage_details)} etapas")
-        return stage_details
-        
-    except Exception as e:
-        print(f"DEBUG: Exception em fetch_house_stage_details: {str(e)}")
-        return None
 
-@st.cache_data(ttl=300)
+
+@st.cache_data(ttl=30)
 def fetch_all_funnel_data(base_url: str, token: str, start_date: str, end_date: str):
     """Busca dados de todos os funis para comparar usuários"""
     try:
@@ -417,6 +358,8 @@ def fetch_all_funnel_data(base_url: str, token: str, start_date: str, end_date: 
     except Exception as e:
         print(f"DEBUG: Exception: {str(e)}")
         return None
+
+
 
 @st.cache_data(ttl=300)
 def process_comparative_funnel_data(deals_data):
@@ -508,229 +451,43 @@ def show_last_update():
     st.caption(f"🕐 Última atualização: {now.strftime('%d/%m/%Y %H:%M:%S')}")
 
 # -------- Header --------
+# -------- Configurações --------
+# Configuração da API
+base_url = os.getenv("API_BASE_URL", "https://crm.rdstation.com")
+token = os.getenv("API_TOKEN", "681cb285978e2f00145fb15d")
+
+# Período de análise
+today = date.today()
+start_default = today - timedelta(days=30)
+d_start = start_default
+d_end = today
+
+# Filtros
+team_filter = "Todos"
+
 st.title("🏠 Dashboard Funil - HOUSE")
 st.caption("Análise específica do Funil - HOUSE (ID: 689b59706e704a0024fc2374)")
 
-# -------- Sidebar --------
-with st.sidebar:
-    st.header("⚙️ Configuração")
-    
-    # Configuração da API
-    base_url = st.text_input("API Base URL", os.getenv("API_BASE_URL", "https://crm.rdstation.com"))
-    token = st.text_input("API Token", os.getenv("API_TOKEN", "681cb285978e2f00145fb15d"), type="password")
-    
-    st.divider()
-    
-    # Informações do Funil - HOUSE
-    st.subheader("🏠 Funil - HOUSE")
-    st.info("**ID:** `689b59706e704a0024fc2374`")
-    st.success("✅ Dashboard focado no Funil - HOUSE")
-    
-    st.divider()
-    
-    # Período de análise
-    st.subheader("🗓️ Período de Análise")
-    today = date.today()
-    start_default = today - timedelta(days=30)
-    d_start = st.date_input("Data Início", start_default, format="DD/MM/YYYY")
-    d_end = st.date_input("Data Fim", today, format="DD/MM/YYYY")
-    
-    st.divider()
-    
-    # Filtros
-    st.subheader("🎯 Filtros")
-    team_filter = st.selectbox(
-        "Selecionar Time",
-        ["Todos", "Equipe Fenix", "Equipe Bulls"],
-        help="Escolha um time específico ou veja todos os dados do Funil - HOUSE"
-    )
-    
-    st.divider()
-    
-    # Status da conexão
-    if token and base_url:
-        st.success("✅ Conectado ao CRM")
-        st.info(f"📅 Período: {d_start.strftime('%d/%m/%Y')} - {d_end.strftime('%d/%m/%Y')}")
-        st.info("🏠 Funil: HOUSE")
-    else:
-        st.warning("⚠️ Configure a API")
+# Status da conexão
+if token and base_url:
+    st.success(f"✅ Conectado ao CRM | 📅 Período: {d_start.strftime('%d/%m/%Y')} - {d_end.strftime('%d/%m/%Y')} | 🏠 Funil: HOUSE")
+else:
+    st.warning("⚠️ Configure a API no arquivo .env")
 
-    st.divider()
-    
-    # Configurações de Auto-Refresh
-    st.subheader("🔄 Auto-Refresh")
-    auto_refresh = st.checkbox(
-        "Ativar atualização automática",
-        value=True,
-        help="Atualiza os dados automaticamente"
-    )
-    
-    if auto_refresh:
-        refresh_interval = st.selectbox(
-            "Intervalo de atualização:",
-            ["30 segundos", "1 minuto", "2 minutos", "5 minutos", "10 minutos"],
-            index=2,  # 2 minutos como padrão
-            help="Frequência de atualização dos dados"
-        )
-        
-        # Converter para segundos
-        interval_map = {
-            "30 segundos": 30,
-            "1 minuto": 60,
-            "2 minutos": 120,
-            "5 minutos": 300,
-            "10 minutos": 600
-        }
-        
-        refresh_seconds = interval_map[refresh_interval]
-        
-        # Mostrar status do auto-refresh
-        st.success(f"✅ Auto-refresh ativo - {refresh_interval}")
-        
-        # Botão de atualização manual
-        if st.button("🔄 Atualizar Agora", help="Força uma atualização imediata dos dados"):
-            st.rerun()
-        
-        # Adicionar JavaScript para auto-refresh
-        st.markdown(
-            f"""
-            <script>
-                setTimeout(function(){{
-                    window.location.reload();
-                }}, {refresh_seconds * 1000});
-            </script>
-            """,
-            unsafe_allow_html=True
-        )
-    else:
-        st.info("ℹ️ Auto-refresh desativado")
-        
-        # Botão de atualização manual quando auto-refresh está desativado
-        if st.button("🔄 Atualizar Agora", help="Força uma atualização imediata dos dados"):
-            st.rerun()
-    
-    st.divider()
+# -------- Botão de Atualização --------
+col1, col2, col3 = st.columns([1, 2, 1])
+with col2:
+    if st.button("🔄 Atualizar Dados", help="Força uma atualização imediata dos dados"):
+        st.cache_data.clear()
+        st.rerun()
 
 # -------- Tabs --------
-tab1, tab2, tab3, tab4 = st.tabs(["📊 Dashboard", "🔍 Consulta de Estágios - Funil HOUSE", "📈 Detalhes das Etapas - HOUSE", "👥 Comparativo por Usuário"])
+tab1, tab2 = st.tabs(["🔍 Consulta de Estágios - Funil HOUSE", "👥 Comparativo por Usuário"])
 
-# -------- Aba 1: Dashboard --------
+
+
+# -------- Aba 1: Consulta de Estágios --------
 with tab1:
-    if token and base_url:
-        # Mostrar última atualização
-        show_last_update()
-        
-        # Converter datas para string
-        start_date = d_start.strftime("%Y-%m-%d")
-        end_date = d_end.strftime("%Y-%m-%d")
-        
-        # -------- Informações do Funil - HOUSE --------
-        st.subheader("🏠 Funil - HOUSE - Informações")
-        
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            st.metric("🏠 Funil", "HOUSE")
-        with col2:
-            st.metric("🆔 ID", "689b59706e704a0024fc2374")
-        with col3:
-            st.metric("📊 Status", "Ativo")
-        
-        st.divider()
-        
-        # Buscar dados específicos do Funil - HOUSE
-        with st.spinner("🔄 Carregando dados do Funil - HOUSE..."):
-            house_data = fetch_house_funnel_data(base_url, token, start_date, end_date)
-            
-            if house_data:
-                # Processar dados
-                funnel_df = process_deals_data(house_data, team_filter)
-                
-                if funnel_df is not None and not funnel_df.empty:
-                    # -------- Métricas Principais --------
-                    st.header("📈 Métricas do Funil - HOUSE")
-                    
-                    col1, col2, col3, col4 = st.columns(4)
-                    
-                    with col1:
-                        total_deals = funnel_df["count"].sum()
-                        st.metric("Total de Negócios", total_deals)
-                    
-                    with col2:
-                        if len(funnel_df) > 1:
-                            conversion_rate = (funnel_df.iloc[-1]["count"] / funnel_df.iloc[0]["count"] * 100) if funnel_df.iloc[0]["count"] > 0 else 0
-                            st.metric("Taxa de Conversão", f"{conversion_rate:.1f}%")
-                        else:
-                            st.metric("Taxa de Conversão", "N/A")
-                    
-                    with col3:
-                        stages_count = len(funnel_df)
-                        st.metric("Estágios Ativos", stages_count)
-                    
-                    with col4:
-                        avg_deals_per_stage = total_deals / stages_count if stages_count > 0 else 0
-                        st.metric("Média por Estágio", f"{avg_deals_per_stage:.0f}")
-                    
-                    st.divider()
-                    
-                    # -------- Funil de Vendas - HOUSE --------
-                    st.header(f"📊 Funil de Vendas - HOUSE ({team_filter})")
-                    
-                    # Gráfico de barras
-                    st.bar_chart(funnel_df.set_index("stage"), use_container_width=True)
-                    
-                    # Tabela detalhada
-                    st.subheader("📋 Detalhamento por Estágio")
-                    st.dataframe(funnel_df, use_container_width=True)
-                    
-                    # Download dos dados
-                    csv = funnel_df.to_csv(index=False)
-                    st.download_button(
-                        label="📥 Download CSV - HOUSE",
-                        data=csv,
-                        file_name=f"house_funnel_{team_filter}_{start_date}_{end_date}.csv",
-                        mime="text/csv"
-                    )
-                    
-                    st.divider()
-                    
-                    # -------- Análise por Usuário --------
-                    if team_filter == "Todos":
-                        st.header("👥 Análise por Usuário - HOUSE")
-                        
-                        # Contar por usuário
-                        user_counts = {}
-                        for deal in house_data["deals"]:
-                            if "user" in deal and deal["user"]:
-                                user_info = deal["user"]
-                                if isinstance(user_info, dict) and "name" in user_info:
-                                    user_name = user_info["name"]
-                                    if user_name not in user_counts:
-                                        user_counts[user_name] = 0
-                                    user_counts[user_name] += 1
-                        
-                        if user_counts:
-                            # Criar gráfico de usuários
-                            user_df = pd.DataFrame([
-                                {"Usuário": user, "Negócios": count}
-                                for user, count in sorted(user_counts.items(), key=lambda x: x[1], reverse=True)
-                            ])
-                            
-                            st.bar_chart(user_df.set_index("Usuário"), use_container_width=True)
-                            
-                            # Tabela de usuários
-                            st.dataframe(user_df, use_container_width=True)
-                
-                else:
-                    st.error("❌ Não foi possível processar os dados do Funil - HOUSE")
-                    st.info("💡 Verifique se a API retornou dados válidos")
-            else:
-                st.error("❌ Falha ao conectar com o Funil - HOUSE")
-                st.info("💡 Verifique a URL base e o token")
-    else:
-        st.info("ℹ️ Configure a URL base e o token na sidebar para ver os dados do Funil - HOUSE")
-
-# -------- Aba 2: Consulta de Estágios --------
-with tab2:
     if token and base_url:
         # Mostrar última atualização
         show_last_update()
@@ -964,267 +721,10 @@ with tab2:
         else:
             st.info("ℹ️ Configure a URL base e o token na sidebar para consultar os estágios do Funil - HOUSE")
 
-# -------- Aba 3: Detalhes das Etapas - HOUSE --------
-with tab3:
-    if token and base_url:
-        # Mostrar última atualização
-        show_last_update()
-        
-        st.header("📈 Detalhes das Etapas - Funil HOUSE")
-        
-        # Converter datas para string
-        start_date = d_start.strftime("%Y-%m-%d")
-        end_date = d_end.strftime("%Y-%m-%d")
-        
-        # Buscar dados detalhados das etapas
-        stage_details = fetch_house_stage_details(base_url, token, start_date, end_date)
-        
-        if stage_details:
-            # Ordenar etapas por ordem
-            sorted_stages = sorted(stage_details.values(), key=lambda x: x["order"])
-            
-            # Coletar todos os usuários únicos
-            all_users = set()
-            for stage in sorted_stages:
-                for deal in stage["deals"]:
-                    all_users.add(deal["user"])
-            
-            all_users = sorted(list(all_users))
-            
-            # Debug: Mostrar todos os usuários encontrados
-            st.info(f"🔍 Usuários encontrados nos dados: {all_users}")
-            st.info(f"📊 Total de usuários únicos: {len(all_users)}")
-            
-            # Filtro por usuário
-            st.subheader("👥 Filtro por Usuário")
-            selected_user = st.selectbox(
-                "Selecione um usuário para filtrar:",
-                ["Todos os Usuários"] + all_users,
-                help="Filtrar deals por quem criou a informação"
-            )
-            
-            # Aplicar filtro
-            if selected_user != "Todos os Usuários":
-                # Filtrar deals por usuário
-                filtered_stages = {}
-                for stage_id, stage_data in stage_details.items():
-                    filtered_deals = [deal for deal in stage_data["deals"] if deal["user"] == selected_user]
-                    
-                    filtered_stages[stage_id] = {
-                        **stage_data,
-                        "deals": filtered_deals,
-                        "deals_count": len(filtered_deals),
-                        "total_value": sum(deal["value"] for deal in filtered_deals),
-                        "avg_value": sum(deal["value"] for deal in filtered_deals) / len(filtered_deals) if filtered_deals else 0
-                    }
-                
-                # Atualizar sorted_stages com dados filtrados
-                sorted_stages = sorted(filtered_stages.values(), key=lambda x: x["order"])
-                
-                st.success(f"✅ Filtrado por: {selected_user}")
-            else:
-                st.info("ℹ️ Mostrando dados de todos os usuários")
-            
-            st.divider()
-            
-            # Métricas gerais (com filtro aplicado)
-            total_deals = sum(stage["deals_count"] for stage in sorted_stages)
-            total_value = sum(stage["total_value"] for stage in sorted_stages)
-            
-            col1, col2, col3 = st.columns(3)
-            with col1:
-                st.metric("📊 Total de Deals", total_deals)
-            with col2:
-                st.metric("💰 Valor Total", f"R$ {total_value:,.2f}")
-            with col3:
-                avg_value = total_value / total_deals if total_deals > 0 else 0
-                st.metric("📈 Valor Médio", f"R$ {avg_value:,.2f}")
-            
-            st.divider()
-            
-            # Gráfico de barras das etapas
-            st.subheader("📊 Distribuição por Etapa")
-            
-            # Preparar dados para o gráfico
-            stage_names = [stage["name"] for stage in sorted_stages]
-            stage_counts = [stage["deals_count"] for stage in sorted_stages]
-            stage_values = [stage["total_value"] for stage in sorted_stages]
-            
-            # Gráfico de quantidade de deals
-            fig_count = go.Figure(data=[
-                go.Bar(
-                    x=stage_names,
-                    y=stage_counts,
-                    text=stage_counts,
-                    textposition='auto',
-                    marker_color='lightblue',
-                    name='Quantidade de Deals'
-                )
-            ])
-            fig_count.update_layout(
-                title=f"Quantidade de Deals por Etapa{f' - {selected_user}' if selected_user != 'Todos os Usuários' else ''}",
-                xaxis_title="Etapas",
-                yaxis_title="Quantidade",
-                height=400
-            )
-            st.plotly_chart(fig_count, use_container_width=True)
-            
-            # Gráfico de valores
-            fig_value = go.Figure(data=[
-                go.Bar(
-                    x=stage_names,
-                    y=stage_values,
-                    text=[f"R$ {v:,.2f}" for v in stage_values],
-                    textposition='auto',
-                    marker_color='lightgreen',
-                    name='Valor Total'
-                )
-            ])
-            fig_value.update_layout(
-                title=f"Valor Total por Etapa{f' - {selected_user}' if selected_user != 'Todos os Usuários' else ''}",
-                xaxis_title="Etapas",
-                yaxis_title="Valor (R$)",
-                height=400
-            )
-            st.plotly_chart(fig_value, use_container_width=True)
-            
-            st.divider()
-            
-            # Tabela detalhada
-            st.subheader("📋 Tabela Detalhada das Etapas")
-            
-            # Criar DataFrame para a tabela
-            table_data = []
-            for stage in sorted_stages:
-                table_data.append({
-                    "Ordem": stage["order"],
-                    "Etapa": stage["name"],
-                    "Apelido": stage["nickname"],
-                    "Deals": stage["deals_count"],
-                    "Valor Total": f"R$ {stage['total_value']:,.2f}",
-                    "Valor Médio": f"R$ {stage['avg_value']:,.2f}",
-                    "ID": stage["id"]
-                })
-            
-            df_stages = pd.DataFrame(table_data)
-            st.dataframe(df_stages, use_container_width=True)
-            
-            # Download da tabela
-            csv = df_stages.to_csv(index=False)
-            filter_suffix = f"_{selected_user.replace(' ', '_')}" if selected_user != "Todos os Usuários" else ""
-            st.download_button(
-                label="📥 Download Tabela Detalhada",
-                data=csv,
-                file_name=f"detalhes_etapas_house{filter_suffix}_{start_date}_to_{end_date}.csv",
-                mime="text/csv"
-            )
-            
-            st.divider()
-            
-            # Resumo de performance por usuário
-            st.subheader("👥 Resumo de Performance por Usuário")
-            
-            # Calcular métricas por usuário
-            user_performance = {}
-            for stage in stage_details.values():
-                for deal in stage["deals"]:
-                    user = deal["user"]
-                    if user not in user_performance:
-                        user_performance[user] = {
-                            "total_deals": 0,
-                            "total_value": 0,
-                            "stages": set()
-                        }
-                    
-                    user_performance[user]["total_deals"] += 1
-                    user_performance[user]["total_value"] += deal["value"]
-                    user_performance[user]["stages"].add(stage["name"])
-            
-            # Criar DataFrame de performance
-            performance_data = []
-            for user, metrics in user_performance.items():
-                performance_data.append({
-                    "Usuário": user,
-                    "Total Deals": metrics["total_deals"],
-                    "Valor Total": f"R$ {metrics['total_value']:,.2f}",
-                    "Valor Médio": f"R$ {metrics['total_value']/metrics['total_deals']:,.2f}" if metrics["total_deals"] > 0 else "R$ 0,00",
-                    "Etapas Ativas": len(metrics["stages"]),
-                    "Etapas": ", ".join(sorted(metrics["stages"]))
-                })
-            
-            # Ordenar por valor total
-            performance_data.sort(key=lambda x: float(x["Valor Total"].replace("R$ ", "").replace(",", "")), reverse=True)
-            
-            df_performance = pd.DataFrame(performance_data)
-            st.dataframe(df_performance, use_container_width=True)
-            
-            # Gráfico de performance por usuário
-            if len(performance_data) > 1:
-                users = [row["Usuário"] for row in performance_data]
-                values = [float(row["Valor Total"].replace("R$ ", "").replace(",", "")) for row in performance_data]
-                deals = [row["Total Deals"] for row in performance_data]
-                
-                fig_user = go.Figure(data=[
-                    go.Bar(
-                        x=users,
-                        y=values,
-                        text=[f"R$ {v:,.2f}" for v in values],
-                        textposition='auto',
-                        marker_color='lightcoral',
-                        name='Valor Total'
-                    )
-                ])
-                fig_user.update_layout(
-                    title="Performance por Usuário - Valor Total",
-                    xaxis_title="Usuários",
-                    yaxis_title="Valor (R$)",
-                    height=400
-                )
-                st.plotly_chart(fig_user, use_container_width=True)
-            
-            st.divider()
-            
-            # Detalhes de cada etapa
-            st.subheader("🔍 Detalhes de Cada Etapa")
-            
-            for stage in sorted_stages:
-                if stage["deals_count"] > 0:
-                    with st.expander(f"📋 {stage['name']} ({stage['deals_count']} deals)"):
-                        col1, col2, col3 = st.columns(3)
-                        with col1:
-                            st.metric("Deals", stage["deals_count"])
-                        with col2:
-                            st.metric("Valor Total", f"R$ {stage['total_value']:,.2f}")
-                        with col3:
-                            st.metric("Valor Médio", f"R$ {stage['avg_value']:,.2f}")
-                        
-                        # Lista de deals da etapa
-                        st.subheader("📝 Deals desta Etapa")
-                        deals_df = pd.DataFrame(stage["deals"])
-                        if not deals_df.empty:
-                            # Formatar colunas
-                            deals_df["value"] = deals_df["value"].apply(lambda x: f"R$ {x:,.2f}")
-                            deals_df["created_at"] = pd.to_datetime(deals_df["created_at"]).dt.strftime("%d/%m/%Y %H:%M")
-                            deals_df = deals_df.rename(columns={
-                                "id": "ID",
-                                "name": "Nome",
-                                "value": "Valor",
-                                "user": "Usuário",
-                                "created_at": "Criado em"
-                            })
-                            st.dataframe(deals_df, use_container_width=True)
-                        else:
-                            st.info("Nenhum deal encontrado nesta etapa.")
-                else:
-                    with st.expander(f"📋 {stage['name']} (0 deals)"):
-                        st.info("Nenhum deal encontrado nesta etapa.")
-        else:
-            st.error("❌ Erro ao buscar detalhes das etapas")
-    else:
-        st.warning("⚠️ Configure a API")
 
-# -------- Aba 4: Comparativo por Usuário --------
-with tab4:
+
+# -------- Aba 2: Comparativo por Usuário --------
+with tab2:
     if token and base_url:
         # Mostrar última atualização
         show_last_update()
@@ -1236,8 +736,8 @@ with tab4:
         start_date = d_start.strftime("%Y-%m-%d")
         end_date = d_end.strftime("%Y-%m-%d")
         
-        # Buscar dados comparativos
-        comparative_data = fetch_all_funnel_data(base_url, token, start_date, end_date)
+        # Buscar dados comparativos - APENAS do Funil HOUSE
+        comparative_data = fetch_house_funnel_data(base_url, token, start_date, end_date)
         
         if comparative_data:
             # Processar dados para o gráfico comparativo
@@ -1250,7 +750,9 @@ with tab4:
                 # Definir cores para cada usuário
                 colors = {
                     "Maria Eduarda ": "lightcoral",  # Vermelho pastel
-                    "Paola Chagas": "lightblue"      # Azul pastel
+                    "Paola Chagas": "lightblue",
+                    "Jonathan Vitorino": "lightgreen",
+                    "David Cauã Ferreira de Sene": "lightorange",
                 }
                 
                 fig = go.Figure()
@@ -1343,6 +845,8 @@ with tab4:
             st.error("❌ Falha ao conectar com o CRM para buscar dados comparativos.")
     else:
         st.info("ℹ️ Configure a URL base e o token na sidebar para ver o comparativo por usuário.")
+
+
 
 # -------- Informações --------
 with st.expander("ℹ️ Sobre o Dashboard"):
