@@ -208,7 +208,7 @@ def main():
             st.success(f"✅ Dados do Funil HOUSE carregados com sucesso!")
             
             # Criar abas para organizar o conteúdo
-            tab1, tab2, tab3 = st.tabs(["📊 Funil HOUSE", "👥 Comparativo por Usuário", "🔍 Detalhes"])
+            tab1, tab2 = st.tabs(["📊 Funil HOUSE", "👥 Comparativo por Usuário"])
             
             with tab1:
                 st.header("📊 Funil HOUSE - Visão Geral")
@@ -345,51 +345,6 @@ def main():
                     
                 else:
                     st.info("👥 Dados insuficientes para análise comparativa por usuário")
-            
-            with tab3:
-                st.header("🔍 Detalhes do Funil HOUSE")
-                
-                # Etapas do funil
-                if house_stages:
-                    st.subheader("🎯 Etapas do Funil - HOUSE")
-                    
-                    stages_summary = []
-                    for stage in house_stages:
-                        if isinstance(stage, dict):
-                            pipeline_info = stage.get("deal_pipeline", {})
-                            stages_summary.append({
-                                "Nome": stage.get("name", "N/A"),
-                                "Apelido": stage.get("nickname", "N/A"),
-                                "Ordem": stage.get("order", "N/A"),
-                                "Pipeline": pipeline_info.get("name", "N/A")
-                            })
-                    
-                    if stages_summary:
-                        stages_df = pd.DataFrame(stages_summary)
-                        st.dataframe(stages_df, use_container_width=True)
-                
-                # Deals detalhados
-                if house_data and "deals" in house_data:
-                    st.subheader("📋 Deals do Funil - HOUSE")
-                    
-                    deals = house_data["deals"]
-                    if deals:
-                        # Criar DataFrame com colunas importantes
-                        deals_data = []
-                        for deal in deals[:20]:  # Mostrar apenas os primeiros 20
-                            deals_data.append({
-                                "Nome": deal.get("name", "N/A"),
-                                "Usuário": deal.get("user", {}).get("name", "N/A") if deal.get("user") else "N/A",
-                                "Etapa": deal.get("deal_stage", {}).get("name", "N/A") if deal.get("deal_stage") else "N/A",
-                                "Valor": deal.get("amount_total", "N/A"),
-                                "Data": deal.get("created_at", "N/A")
-                            })
-                        
-                        deals_df = pd.DataFrame(deals_data)
-                        st.dataframe(deals_df, use_container_width=True)
-                        
-                        if len(deals) > 20:
-                            st.info(f"�� Mostrando os primeiros 20 de {len(deals)} deals")
         
         else:
             st.error("❌ Erro ao carregar dados do Funil HOUSE")
